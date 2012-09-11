@@ -6,7 +6,6 @@
     <style type="text/css">
         body {
             margin: 0;
-            /*overflow: hidden;*/
         }
         #container {
             position: relative;
@@ -22,6 +21,8 @@
     <script src="http://code.jquery.com/jquery-1.8.1.min.js"></script>
     <script src="http://underscorejs.org/underscore-min.js"></script>
     <script type="text/javascript">
+        // prepare animation loop utility
+
         window.requestAnimFrame = (function (callback) {
             return window.requestAnimationFrame ||
                     window.webkitRequestAnimationFrame ||
@@ -98,7 +99,6 @@
 
     newGame = ->
         snake = createSnake()
-        snake?.setStartPosition stage.width / BLOCK_SIZE, stage.height / BLOCK_SIZE
 
     getStartButton = -> document.getElementById "start"
 
@@ -115,11 +115,12 @@
 
     bindKeyboard = ->
         $(document).keydown (e) ->
-            switch e.keyCode
-                when 38 then snake?.direction = 'up'
-                when 40 then snake?.direction = 'down'
-                when 37 then snake?.direction = 'left'
-                when 39 then snake?.direction = 'right'
+            snake?.direction =
+                switch e.keyCode
+                    when 38 then 'up'
+                    when 40 then 'down'
+                    when 37 then 'left'
+                    when 39 then 'right'
 
     do ->
         prepareCanvas()
@@ -138,13 +139,11 @@
         constructor: ->
             @direction = 'right'
             @blocks = [
-                new Block(3, 0)
-                new Block(2, 0)
-                new Block(1, 0)
+                new Block 3, 0
+                new Block 2, 0
+                new Block 1, 0
             ]
             @color = "green"
-
-        setStartPosition: ->
 
         getHead: ->
             _.first @blocks
