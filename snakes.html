@@ -6,7 +6,7 @@
     <style type="text/css">
         body {
             margin: 0;
-            overflow: hidden;
+            /*overflow: hidden;*/
         }
         #container {
             position: relative;
@@ -20,6 +20,7 @@
         }
     </style>
     <script src="http://code.jquery.com/jquery-1.8.1.min.js"></script>
+    <script src="http://underscorejs.org/underscore-min.js"></script>
     <script type="text/javascript">
         window.requestAnimFrame = (function (callback) {
             return window.requestAnimationFrame ||
@@ -41,13 +42,22 @@
 </div>
 
 <script type="text/coffeescript">
+    # constants
+    MAX_WIDTH = 1200
+    MAX_HEIGHT = 800
+    BLOCK_SIZE = 25
+    REFRESH_RATE = 150 # ms
+
+    # global vars
     stage = document.getElementById "content"
+    ctx = stage.getContext "2d"
     running = false
-    blockSize = 25
+    nextUpdate = 0
+    snake = null
 
     prepareCanvas = ->
-        stage.width = 1200
-        stage.height = 800
+        stage.width = MAX_WIDTH
+        stage.height = MAX_HEIGHT
 
 
     start = ->
@@ -58,20 +68,37 @@
                 animate()
                 animLoop() if running
 
-        setTimeout animLoop, 3000
+        animLoop()
 
     animate = ->
         try
+            if $.now() >= nextUpdate
+                update()
+                render()
         catch e
             console.log e
             console.log e.stack if e.stack?
 
+    update = ->
+        snake.move()
+
+    render = ->
+        # draw
+        ctx.clearRect 0, 0, MAX_WIDTH, MAX_HEIGHT
+        snake.blocks.forEach ({x, y}) ->
+            ctx.save()
+            ctx.fillStyle = snake?.color ? "green"
+            ctx.fillRect x * BLOCK_SIZE + 1, y * BLOCK_SIZE + 1, BLOCK_SIZE - 2, BLOCK_SIZE - 2
+            ctx.restore()
+
+        nextUpdate = $.now() + REFRESH_RATE
+
     createSnake = ->
-        if Snake? then new Snake() else {}
+        new Snake()
 
     newGame = ->
         snake = createSnake()
-        snake?.setStartPosition 60, 40
+        snake?.setStartPosition stage.width / BLOCK_SIZE, stage.height / BLOCK_SIZE
 
     getStartButton = -> document.getElementById "start"
 
@@ -82,24 +109,50 @@
     prepareButton = ->
         startButton = getStartButton()
         startButton.onclick = ->
+            newGame()
             start()
             startButton.disabled = "disabled"
 
+    bindKeyboard = ->
+        $(document).keydown (e) ->
+            switch e.keyCode
+                when 38 then snake?.direction = 'up'
+                when 40 then snake?.direction = 'down'
+                when 37 then snake?.direction = 'left'
+                when 39 then snake?.direction = 'right'
 
     do ->
         prepareCanvas()
         prepareButton()
-</script>
+        bindKeyboard()
 
-<script type="text/coffeescript">
+    class Block
+        constructor: (@x, @y) ->
+        up: -> new Block @x, @y - 1
+        down: -> new Block @x, @y + 1
+        left: -> new Block @x - 1, @y
+        right: -> new Block @x + 1, @y
+
+
     class Snake
         constructor: ->
+            @direction = 'right'
+            @blocks = [
+                new Block(3, 0)
+                new Block(2, 0)
+                new Block(1, 0)
+            ]
             @color = "green"
 
-        getSquares = ->
-            [
-                [60, 60]
-            ]
+        setStartPosition: ->
+
+        getHead: ->
+            _.first @blocks
+
+        move: ->
+            @blocks.pop()
+            @blocks.unshift @getHead()[@direction]()
+
 
 </script>
 
