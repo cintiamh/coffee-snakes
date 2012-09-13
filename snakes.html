@@ -59,61 +59,98 @@
 
     # instances
     snake = null
-    apple = null
+    apple = null # there is always one apple
 
     prepareCanvas = ->
         stage.width = MAX_WIDTH
         stage.height = MAX_HEIGHT
 
-
     start = ->
         running = true
+
+        # defines a function which request an animation frame
         animLoop = ->
+            # the browser will throttle the calls to a frame rate
             requestAnimFrame ->
+                # this is our main function, called once each frame
                 animate()
+
+                # running is just a flag to control the animation loop, use it to set game over
                 animLoop() if running
 
+        # start the loop
         animLoop()
 
     animate = ->
         try
+            # frame rate varies per browser, OS, GPU card, etc - we can normalize it by code
             if $.now() >= nextUpdate
+                # this is usually a two step process
+
+                # first you update the status of the game, put all the logic and math here
                 update()
+
+                # then you draw everything into the screen
                 render()
+
+                # set timestamp of the next update
+                nextUpdate = $.now() + REFRESH_RATE
         catch e
+            # global try/catch is good to avoid the interruption of the animation loop, you hope to recover
+
+            #... but in our case let's stop everything to make our console readable
             running = false
+
+            # print the error message
             console.log e
+
+            # and Chrome goes even farther allowing us to see a stack trace
             console.log e.stack if e.stack?
 
     update = ->
+
+        # first the most obvious action: the snake is always moving
         snake.move()
 
-        # what if the snake hits something: wall, itself, apple
+        # now, what if the snake hits something: wall, itself or the apple
 
     render = ->
-        # draw
+        # clear all the content in the canvas
         ctx.clearRect 0, 0, MAX_WIDTH, MAX_HEIGHT
 
+        # save all context settings just for safety
+        ctx.save()
+
+        # and draw both elements
         apple.draw ctx
         snake.draw ctx
 
-        nextUpdate = $.now() + REFRESH_RATE
+        # restore saved settings, this will reset any mess caused by draw functions
+        ctx.restore()
 
-    createSnake = ->
-        snake = new Snake()
+    # single line function bodies can stay in the same line of the -> in this case
+    createSnake = -> snake = new Snake()
 
     addApple = ->
+        # here is an object deconstruction: head is a Block instance with x and y
+        # by using object notation in the left side, the properties from the value are mapped to the left
         {x, y} = snake.getHead()
 
+        # and now we can use x and y as local variables
         apple = new Apple x, y
+
+        # postfix notation is all about being expressive...
+
+        # you read like 'apple.x receives a new random WHILE its value is equals to x'
         apple.x = randomInt(MAX_WIDTH / BLOCK_SIZE) while apple.x == x
         apple.y = randomInt(MAX_HEIGHT / BLOCK_SIZE) while apple.y == y
 
 
-    randomInt = (n) ->
-      Math.floor Math.random() * n
+        # bonus: 'x' in the left will map to 'x' in the assigned value, how to map 'x' to another variable name?
 
+    randomInt = (n) -> Math.floor Math.random() * n
 
+    # CoffeeScript is still JavaScript, you can access window, document just like JS
     getStartButton = -> document.getElementById "start"
 
     gameOver = ->
@@ -121,8 +158,11 @@
         running = false
 
     loadApple = ->
+        # <img> objects can be used to draw into the canvas
         img = new Image()
         img.onload = -> appleImage = img
+
+        # bonus: set your favorite apple image url here
         img.src = 'http://valuestream2009.files.wordpress.com/2012/01/apple-logo-red.jpg'
 
     prepareButton = ->
@@ -134,7 +174,10 @@
             startButton.disabled = 'disabled'
 
     bindKeyboard = ->
+        # using jquery just like we would use with regular JS, remember: CoffeeScript is JavaScript
         $(document).keydown (e) ->
+
+            # you can use if/switch blocks to assign values to a variable
             direction =
                 switch e.keyCode
                     when 38 then 'up'
@@ -143,16 +186,28 @@
                     when 39 then 'right'
                     else null
 
+            # '?' will check if the variable is initialized before evaluating a property
             snake?.direction = direction if direction?
 
+    # 'do' is used to create a self-executing function
     do ->
         prepareCanvas()
         prepareButton()
         bindKeyboard()
         loadApple()
 
+    # now let's move to the object orientation side of CoffeeScript
+
+    # did you notice how the class members are defined with object notation?
+    # look for John Resig's JavaScript inheritance, CoffeeScript works in the same fashion
+
     class Block
+        # '@' is an alias to 'this', you still can use 'this'
         constructor: (@x, @y) ->
+          # by defining a constructor argument with '@', we are defining a property and assigining a value from the constructor
+
+
+        # now we have a some of utility functions
         up: -> new Block @x, @y - 1
         down: -> new Block @x, @y + 1
         left: -> new Block @x - 1, @y
@@ -162,6 +217,8 @@
     class Snake
         constructor: ->
             @direction = 'right'
+
+            #  there is no need to use comma so separate elements in a list if you define an element per line
             @blocks = [
                 new Block 3, 0
                 new Block 2, 0
@@ -171,29 +228,43 @@
             @color = "green"
 
         getHead: ->
+            # let underscore.js verify if the list is not null, not empty, etc
             _.first @blocks
 
         move: ->
+            # let's use the list like a queue
+
+            # remove old elements from the end
             @blocks.pop() while @blocks.length > @length - 1
+
+            # and add the new head's position in the beginning
             @blocks.unshift @getHead()[@direction]()
 
         draw: (ctx) ->
+
+            # this is one way to write a for, it looks clean but it is not exclusive to CoffeeScript
+            # can you rewrite that in the traditional for loop?
             @blocks.forEach ({x, y}) ->
                 ctx.save()
                 ctx.fillStyle = @color ? "green"
                 ctx.fillRect x * BLOCK_SIZE + 1, y * BLOCK_SIZE + 1, BLOCK_SIZE - 2, BLOCK_SIZE - 2
                 ctx.restore()
 
+            # bonus: can you rewrite this using comprehensions? You may need some extra effort
 
     class Apple
         constructor: (@x, @y) ->
 
         draw: (ctx) ->
             ctx.save()
+
+            # '?' here will check if appleImage is not null
             if appleImage?
                 ctx.translate @x * BLOCK_SIZE + 1, @y * BLOCK_SIZE + 1
                 ctx.scale (BLOCK_SIZE - 2) / appleImage.width, (BLOCK_SIZE - 2) / appleImage.height
                 ctx.drawImage appleImage, 0, 0
+
+            # and we have a fallback in case your image fails to load
             else
                 ctx.beginPath()
                 ctx.fillStyle = "red"
